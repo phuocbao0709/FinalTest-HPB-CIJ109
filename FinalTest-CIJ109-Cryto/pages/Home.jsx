@@ -15,12 +15,29 @@ export const Home = () => {
       return null;
     }
   });
-
+  const [isAccessToken, setIsAccessToken] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("access_token");
+      return stored ? true : false;
+    } catch {
+      return false;
+    }
+  });
   const [cryptoList, setCryptoList] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("market_cap_rank");
+  const [favoriteIds, setFavoriteIds] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("crypto_favorites");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -34,7 +51,17 @@ export const Home = () => {
 
   useEffect(() => {
     filterAndSort();
-  }, [sortBy, cryptoList, searchQuery]);
+  }, [sortBy, cryptoList, searchQuery, favoriteIds]);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("crypto_favorites", JSON.stringify(favoriteIds));
+      }
+    } catch {
+      // ignore
+    }
+  }, [favoriteIds]);
 
   const fetchCryptoData = async () => {
     try {
@@ -48,6 +75,13 @@ export const Home = () => {
   };
 
   const handleLogout = () => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+      }
+    } catch {
+      // ignore
+    }
     setUser(null);
     navigate("/auth");
   };
@@ -59,8 +93,14 @@ export const Home = () => {
         crypto.symbol.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
+    if (sortBy === "favorites") {
+      filtered = filtered.filter((crypto) => favoriteIds.includes(crypto.id));
+    }
+
     filtered.sort((a, b) => {
       switch (sortBy) {
+        case "favorites":
+          return a.market_cap_rank - b.market_cap_rank;
         case "name":
           return a.name.localeCompare(b.name);
         case "price":
@@ -78,6 +118,13 @@ export const Home = () => {
 
     setFilteredList(filtered);
   };
+  const handleToggleFavorite = (cryptoId) => {
+    setFavoriteIds((prev) =>
+      prev.includes(cryptoId)
+        ? prev.filter((id) => id !== cryptoId)
+        : [...prev, cryptoId],
+    );
+  };
   const featuredCryptos = cryptoList.slice(0, 4); // Lấy 4 đồng đầu tiên
   const newListedCryptos = cryptoList.slice(-4); // Lấy 4 đồng cuối
   const totalMarketCap = cryptoList.reduce(
@@ -91,18 +138,20 @@ export const Home = () => {
   const btcDominance = 48.5; // Bạn có thể tính % dựa trên BTC/Total
   return (
     <div className="app">
-      {!user ? (
-        <AuthForm onLoginSuccess={setUser} />
-      ) : (
+      {
         <>
           <header className="header">
             <div className="header-content">
               <div className="logo-section">
                 <h1>Crypto Price</h1>
-                <p>
-                  Xin chào, {user.name}! Real-time cryptocurrency prices and
-                  market data
-                </p>
+                {isAccessToken ? (
+                  <p>
+                    Xin chào, {user.name}! Real-time cryptocurrency prices and
+                    market data
+                  </p>
+                ) : (
+                  <></>
+                )}
               </div>
               <div className="search-section">
                 <input
@@ -113,26 +162,81 @@ export const Home = () => {
                   value={searchQuery}
                 />
               </div>
-              <button className="logout-button" onClick={handleLogout}>
-                Đăng Xuất
-              </button>
+              <div className="auth-buttons">
+                {!isAccessToken ? (
+                  <button
+                    className="login-button"
+                    type="button"
+                    onClick={() => navigate("/auth")}
+                  >
+                    Đăng nhập
+                  </button>
+                ) : (
+                  <button
+                    className="logout-button"
+                    type="button"
+                    onClick={handleLogout}
+                  >
+                    Đăng xuất
+                  </button>
+                )}
+              </div>
             </div>
           </header>
 
           <div className="controls">
             <div className="filter-group">
-              <label>Sort by:</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="market_cap_rank">Rank</option>
-                <option value="name">Name</option>
-                <option value="price">Price (Low to High)</option>
-                <option value="price_desc">Price (High to Low)</option>
-                <option value="change">24h Change</option>
-                <option value="market_cap">Market Cap</option>
-              </select>
+              <div className="navigation-tabs">
+                <button
+                  type="button"
+                  className={sortBy === "market_cap_rank" ? "active" : ""}
+                  onClick={() => setSortBy("market_cap_rank")}
+                >
+                  Rank
+                </button>
+                <button
+                  type="button"
+                  className={sortBy === "name" ? "active" : ""}
+                  onClick={() => setSortBy("name")}
+                >
+                  Name
+                </button>
+                <button
+                  type="button"
+                  className={sortBy === "price" ? "active" : ""}
+                  onClick={() => setSortBy("price")}
+                >
+                  Price (Low → High)
+                </button>
+                <button
+                  type="button"
+                  className={sortBy === "price_desc" ? "active" : ""}
+                  onClick={() => setSortBy("price_desc")}
+                >
+                  Price (High → Low)
+                </button>
+                <button
+                  type="button"
+                  className={sortBy === "change" ? "active" : ""}
+                  onClick={() => setSortBy("change")}
+                >
+                  24h Change
+                </button>
+                <button
+                  type="button"
+                  className={sortBy === "market_cap" ? "active" : ""}
+                  onClick={() => setSortBy("market_cap")}
+                >
+                  Market Cap
+                </button>
+                <button
+                  type="button"
+                  className={sortBy === "favorites" ? "active" : ""}
+                  onClick={() => setSortBy("favorites")}
+                >
+                  Favorites
+                </button>
+              </div>
             </div>
             <div className="view-toggle">
               <button
@@ -168,7 +272,12 @@ export const Home = () => {
           ) : (
             <div className={`crypto-container ${viewMode}`}>
               {filteredList.map((crypto, key) => (
-                <CryptoCard crypto={crypto} key={key} />
+                <CryptoCard
+                  crypto={crypto}
+                  key={crypto.id || key}
+                  isFavorite={favoriteIds.includes(crypto.id)}
+                  onToggleFavorite={handleToggleFavorite}
+                />
               ))}
             </div>
           )}
@@ -177,7 +286,7 @@ export const Home = () => {
             <p>CoinGecko API • Updated every 30 seconds</p>
           </footer>
         </>
-      )}
+      }
     </div>
   );
 };

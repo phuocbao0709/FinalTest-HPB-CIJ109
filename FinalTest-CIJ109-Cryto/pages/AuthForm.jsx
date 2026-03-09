@@ -92,6 +92,10 @@ export const AuthForm = ({ onLoginSuccess }) => {
         password: "",
         confirmPassword: "",
       }));
+      localStorage.setItem(
+        "access_token",
+        "isughiosudgdfgs3dsdfjgbsiodfg16s54df65g65s4df6g6sd5f4g",
+      );
       navigate("/");
     } catch {
       setAuthError("Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.");
@@ -187,6 +191,13 @@ export const AuthForm = ({ onLoginSuccess }) => {
           {authMode === "login" ? "Đăng nhập" : "Đăng ký"}
         </button>
       </form>
+      <button
+        className="home-button"
+        type="button"
+        onClick={() => navigate("/")}
+      >
+        Back to Home
+      </button>
     </div>
   );
 };

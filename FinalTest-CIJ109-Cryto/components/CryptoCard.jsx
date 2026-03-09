@@ -1,10 +1,30 @@
 import { Link } from "react-router";
-import { formatPrice, formatMarketCap } from "../utils/formatter";
+import { formatMarketCap, formatPrice } from "../utils/formatter";
 
-export const CryptoCard = ({ crypto }) => {
+export const CryptoCard = ({ crypto, isFavorite, onToggleFavorite }) => {
+  const handleFavoriteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onToggleFavorite && crypto?.id) {
+      onToggleFavorite(crypto.id);
+    }
+  };
+
   return (
-    <Link to={`/coin/${crypto.id}`} style={{ textDecoration: "none" }}>
-      <div className="crypto-card">
+    <div className="crypto-card">
+      <button
+        type="button"
+        className={`favorite-badge ${isFavorite ? "active" : ""}`}
+        onClick={handleFavoriteClick}
+        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      >
+        ★
+      </button>
+
+      <Link
+        to={`/coin/${crypto.id}`}
+        style={{ textDecoration: "none", color: "inherit" }}
+      >
         <div className="crypto-header">
           <div className="crypto-info">
             <img src={crypto.image} alt={crypto.name} />
@@ -43,7 +63,7 @@ export const CryptoCard = ({ crypto }) => {
             </span>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 };
