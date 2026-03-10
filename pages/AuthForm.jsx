@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../api/firebase";
 
-export const AuthForm = ({ onLoginSuccess }) => {
+export const AuthForm = () => {
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState("login"); // "login" | "register"
   const [formData, setFormData] = useState({
@@ -13,15 +19,15 @@ export const AuthForm = ({ onLoginSuccess }) => {
   const [authError, setAuthError] = useState("");
   const [authSuccess, setAuthSuccess] = useState("");
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-  };
+  }, []);
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setAuthError("");
     setAuthSuccess("");
@@ -43,62 +49,73 @@ export const AuthForm = ({ onLoginSuccess }) => {
       return;
     }
 
-    const newUser = { name, email, password };
     try {
-      localStorage.setItem("crypto_user", JSON.stringify(newUser));
-      setAuthSuccess("Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.");
-      setAuthMode("login");
-      setFormData({
-        name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      const user = userCredential.user;
+
+      await updateProfile(user, {
+        displayName: name,
       });
-    } catch {
-      setAuthError("Không thể lưu thông tin người dùng. Vui lòng thử lại.");
+
+      setAuthSuccess("Đăng ký thành công! Đang chuyển hướng...");
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
+    } catch (error) {
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          setAuthError("Email này đã được đăng ký.");
+          break;
+        case "auth/invalid-email":
+          setAuthError("Email không hợp lệ.");
+          break;
+        case "auth/weak-password":
+          setAuthError("Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.");
+          break;
+        default:
+          setAuthError("Đã xảy ra lỗi: " + error.message);
+      }
     }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError("");
     setAuthSuccess("");
 
     const { email, password } = formData;
+
     if (!email || !password) {
       setAuthError("Vui lòng nhập email và mật khẩu.");
       return;
     }
 
     try {
-      const stored = localStorage.getItem("crypto_user");
-      if (!stored) {
-        setAuthError("Chưa có tài khoản. Vui lòng đăng ký trước.");
-        return;
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      setAuthSuccess("Đăng nhập thành công! Đang chuyển hướng...");
 
-      const savedUser = JSON.parse(stored);
-      if (savedUser.email !== email || savedUser.password !== password) {
-        setAuthError("Email hoặc mật khẩu không đúng.");
-        return;
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
+    } catch (error) {
+      switch (error.code) {
+        case "auth/invalid-credential":
+          setAuthError("Email hoặc mật khẩu không chính xác.");
+          break;
+        case "auth/user-not-found":
+          setAuthError("Tài khoản chưa được đăng ký.");
+          break;
+        case "auth/wrong-password":
+          setAuthError("Mật khẩu không chính xác.");
+          break;
+        default:
+          setAuthError("Đã xảy ra lỗi: " + error.message);
       }
-
-      if (onLoginSuccess) {
-        onLoginSuccess({ name: savedUser.name, email: savedUser.email });
-      }
-      setAuthSuccess("Đăng nhập thành công!");
-      setFormData((prev) => ({
-        ...prev,
-        password: "",
-        confirmPassword: "",
-      }));
-      localStorage.setItem(
-        "access_token",
-        "isughiosudgdfgs3dsdfjgbsiodfg16s54df65g65s4df6g6sd5f4g",
-      );
-      navigate("/");
-    } catch {
-      setAuthError("Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.");
     }
   };
 

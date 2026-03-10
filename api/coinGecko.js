@@ -1,8 +1,14 @@
 const BASE_URL = "https://api.coingecko.com/api/v3";
 
-export const fetchCryptos = async () => {
+export const fetchCryptos = async (payload) => {
+  // const response = await fetch(
+  //   `${BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false`,
+  // );
+
+  const params = new URLSearchParams(payload);
+
   const response = await fetch(
-    `${BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false`
+    `${BASE_URL}/coins/markets?${params.toString()}`,
   );
 
   if (!response.ok) {
@@ -14,7 +20,7 @@ export const fetchCryptos = async () => {
 
 export const fetchCoinData = async (id) => {
   const response = await fetch(
-    `${BASE_URL}/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
+    `${BASE_URL}/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`,
   );
   if (!response.ok) {
     throw new Error("Failed to fetch coin data");
@@ -24,7 +30,7 @@ export const fetchCoinData = async (id) => {
 
 export const fetchChartData = async (id) => {
   const response = await fetch(
-    `${BASE_URL}/coins/${id}/market_chart?vs_currency=usd&days=7`
+    `${BASE_URL}/coins/${id}/market_chart?vs_currency=usd&days=7`,
   );
   if (!response.ok) {
     throw new Error("Failed to fetch chart data");
